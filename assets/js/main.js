@@ -205,6 +205,56 @@
     }).join(''));
   }
 
+  /* --------------------------- 联系方式（显眼位置） --------------------------- */
+  /* 首屏 hero、联系我们、加入我们 三处共用同一套「点一下复制」的联系方式胶囊 */
+
+  function contactItems() {
+    var site = CFG.site || {};
+    var c = site.contacts || {};
+    var out = [];
+    if (c.qq) out.push({ icon: '💬', key: 'QQ', value: c.qq, copy: true });
+    if (c.douyin) out.push({ icon: '🎵', key: '抖音', value: c.douyin, copy: true });
+    if (c.wechat) out.push({ icon: '🟢', key: '微信', value: c.wechat, copy: true });
+    if (c.email) out.push({ icon: '✉️', key: '邮箱', value: c.email, copy: true });
+    if (c.qqGroup) {
+      out.push({ icon: '👥', key: 'QQ 群', value: c.qqGroup + (c.qqGroupName ? '（' + c.qqGroupName + '）' : ''), copy: true });
+    }
+    if (site.room) {
+      out.push({
+        icon: '📍', key: '地址',
+        value: site.room + (site.roomAlias ? '（' + site.roomAlias + '）' : ''),
+        copy: false, href: '#visit'
+      });
+    }
+    return out;
+  }
+
+  function contactPills(items, cls) {
+    return items.map(function (it) {
+      var body = '<span class="cp-key">' + esc(it.icon + ' ' + it.key) + '</span>' +
+        '<span class="cp-val">' + esc(it.value) + '</span>' +
+        (it.copy ? '<span class="cp-hint">点击复制</span>' : '');
+      if (it.copy) {
+        return '<button type="button" class="contact-pill ' + (cls || '') + '" data-copy="' +
+          esc(it.value) + '" title="点击复制">' + body + '</button>';
+      }
+      return '<a class="contact-pill ' + (cls || '') + '" href="' + esc(it.href || '#visit') + '">' + body + '</a>';
+    }).join('');
+  }
+
+  function renderContacts() {
+    var items = contactItems();
+    setHtml('hero-contact', contactPills(items, 'pill-hero'));
+    setHtml('contact-hero', contactPills(items, 'pill-big'));
+    setHtml('join-contacts', contactPills(items, 'pill-cta'));
+
+    /* 「联系我们」右下角的明细表 */
+    setHtml('contact-grid', items.map(function (it) {
+      return '<div class="contact-item"><div class="c-key">' + esc(it.key) + '</div>' +
+        '<div class="c-val">' + esc(it.value) + '</div></div>';
+    }).join(''));
+  }
+
   /* --------------------------- 加入我们（CTA） --------------------------- */
 
   function renderJoinCta() {
@@ -217,29 +267,68 @@
       (site.roomAlias ? '（' + site.roomAlias + '）' : '') + ' · ' + (site.visitNote || ''));
 
     setHtml('join-actions', (cta.actions || []).map(function (a) {
-      if (a.type === 'tel') {
-        return '<a class="btn btn-ghost" href="tel:' + esc(String(a.value).replace(/[^\d+]/g, '')) + '">' +
-          esc(a.label) + ' ' + esc(a.value) + '</a>';
+      /* 目前只有「点击复制」一种；以后要加跳转链接，用 type: 'link' + value 放网址 */
+      if (a.type === 'link') {
+        return '<a class="btn btn-ghost" href="' + esc(a.value) + '" target="_blank" rel="noopener">' +
+          esc(a.label) + '</a>';
       }
       return '<button type="button" class="btn btn-primary" data-copy="' + esc(a.value) + '">' +
         esc(a.label) + '：' + esc(a.value) + '</button>';
     }).join(''));
   }
 
-  /* 点「复制 QQ 号」：优先剪贴板 API，失败则退化为选中提示 */
+  /* 页面上任何带 data-copy 的元素，点一下就复制（首屏胶囊 / 加入我们按钮共用一套） */
+  function copyText(text, done) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(
+        function () { done(true); },
+        function () { done(fallbackCopy(text)); }
+      );
+      return;
+    }
+    done(fallbackCopy(text));
+  }
+
+  /* 非 HTTPS / 老浏览器：用一个看不见的 textarea + execCommand 兜底 */
+  function fallbackCopy(text) {
+    try {
+      var ta = document.createElement('textarea');
+      ta.value = text;
+      ta.setAttribute('readonly', 'readonly');
+      ta.style.position = 'fixed';
+      ta.style.left = '-9999px';
+      document.body.appendChild(ta);
+      ta.select();
+      if (ta.setSelectionRange) ta.setSelectionRange(0, text.length);
+      var ok = document.execCommand && document.execCommand('copy');
+      if (ta.parentNode) ta.parentNode.removeChild(ta);
+      return !!ok;
+    } catch (e) { return false; }
+  }
+
   function initCopyButtons() {
-    var box = byId('join-actions');
-    if (!box) return;
-    box.addEventListener('click', function (e) {
-      var btn = e.target.closest ? e.target.closest('[data-copy]') : null;
+    document.addEventListener('click', function (e) {
+      var btn = (e.target && e.target.closest) ? e.target.closest('[data-copy]') : null;
       if (!btn) return;
       var text = btn.getAttribute('data-copy') || '';
-      var done = function () { flash(btn, '已复制 ' + text); };
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(text).then(done, function () { flash(btn, '复制失败，请手动记录：' + text); });
-      } else {
-        flash(btn, '请手动记录：' + text);
-      }
+
+      copyText(text, function (ok) {
+        if (btn.classList.contains('contact-pill')) {
+          /* 胶囊里有结构，不改文字，只临时把「点击复制」那行换成结果 */
+          var hint = btn.querySelector ? btn.querySelector('.cp-hint') : null;
+          btn.classList.add(ok ? 'copied' : 'copy-failed');
+          if (hint) {
+            if (!hint.dataset.origin) hint.dataset.origin = hint.textContent;
+            hint.textContent = ok ? '已复制 ✓' : '请手动记录：' + text;
+            setTimeout(function () {
+              hint.textContent = hint.dataset.origin;
+              btn.classList.remove('copied', 'copy-failed');
+            }, 2200);
+          }
+        } else {
+          flash(btn, ok ? '已复制 ' + text : '请手动记录：' + text);
+        }
+      });
     });
   }
 
@@ -356,25 +445,6 @@
         '<span class="h-time">' + esc(h.time) + '</span>' +
         '<span class="h-note">' + esc(h.note) + '</span>' +
         '</div>';
-    }).join(''));
-
-    var c = site.contacts || {};
-    var items = [];
-    if (c.qq) items.push({ k: '联系 QQ', v: c.qq });
-    if (c.phone) items.push({ k: '电话（QQ 联系不到时）', v: c.phone });
-    if (c.douyin) items.push({ k: '抖音号', v: c.douyin });
-    if (c.qqGroup) items.push({ k: 'QQ 群', v: c.qqGroup + (c.qqGroupName ? '（' + c.qqGroupName + '）' : '') });
-    if (c.wechat) items.push({ k: '微信', v: c.wechat });
-    if (c.email) items.push({ k: '邮箱', v: c.email });
-    if (site.room) {
-      items.push({ k: '实验室', v: site.room + (site.roomAlias ? '（' + site.roomAlias + '）' : '') });
-    }
-    if (c.bilibili) items.push({ k: 'B 站', v: c.bilibili });
-    if (c.github) items.push({ k: 'GitHub', v: c.github });
-
-    setHtml('contact-grid', items.map(function (it) {
-      return '<div class="contact-item"><div class="c-key">' + esc(it.k) + '</div>' +
-        '<div class="c-val">' + esc(it.v) + '</div></div>';
     }).join(''));
   }
 
@@ -628,6 +698,7 @@
     renderGrads();
     renderGallery();
     renderVisit();
+    renderContacts();
     renderJoinCta();
     renderFaqs();
 

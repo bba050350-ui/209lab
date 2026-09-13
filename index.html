@@ -27,7 +27,7 @@
       <a href="#awards" data-nav="awards">赛事成果</a>
       <a href="#gallery" data-nav="gallery">证书墙</a>
       <a href="#career" data-nav="career">考研就业</a>
-      <a href="#visit" data-nav="visit">来实验室</a>
+      <a href="#visit" data-nav="visit">联系我们</a>
       <a href="#faq" data-nav="faq">常见问题</a>
     </nav>
   </div>
@@ -49,8 +49,11 @@
 
         <div class="hero-actions">
           <a class="btn btn-primary" href="#directions">看看做什么方向 →</a>
-          <a class="btn btn-ghost" href="#visit">来实验室看看</a>
+          <a class="btn btn-ghost" href="#visit">联系我们</a>
         </div>
+
+        <!-- 联系方式：放在首屏最显眼的位置，点一下即可复制 -->
+        <div class="hero-contact" id="hero-contact"></div>
 
         <p class="hero-note"><span>📍</span><span id="hero-note">—</span></p>
       </div>
@@ -205,19 +208,28 @@
     <p class="gallery-empty" id="gallery-empty" hidden>—</p>
   </section>
 
-  <!-- ============================== 来实验室看看 ============================== -->
+  <!-- ============================== 联系我们 ============================== -->
   <section class="section wrap" id="visit">
-    <div class="grid grid-2" style="align-items:start">
+    <div class="section-head reveal">
+      <span class="eyebrow">CONTACT</span>
+      <h2 class="section-title">联系我们，随时来实验室看看</h2>
+      <p class="section-sub">不用预约，直接来第二实验楼 209。来之前也可以先加 QQ 问一句在不在，秒回。</p>
+    </div>
+
+    <!-- 联系方式大卡：QQ / 抖音 / 地址，点一下复制 -->
+    <div class="contact-hero reveal" id="contact-hero"></div>
+
+    <div class="grid grid-2" style="align-items:start;margin-top:18px">
       <div class="card reveal">
         <span class="eyebrow">OPEN HOURS</span>
-        <h3 style="font-size:21px">随时推门进来看看</h3>
+        <h3 style="font-size:21px">什么时候有人</h3>
         <p class="muted" style="font-size:13.8px" id="visit-note">—</p>
         <div id="hours-list" style="margin-top:8px"></div>
       </div>
       <div class="card reveal">
-        <span class="eyebrow">CONTACT</span>
-        <h3 style="font-size:21px">找到我们</h3>
-        <p class="muted" style="font-size:13.8px">QQ 联系不到时直接打电话。来实验室之前也可以先在 QQ 上问一句在不在。</p>
+        <span class="eyebrow">WHERE</span>
+        <h3 style="font-size:21px">怎么找到我们</h3>
+        <p class="muted" style="font-size:13.8px">从实验楼正门进来上二楼，走廊尽头右手边就是 209。找不到人就加 QQ 喊一声，我们下楼接你。</p>
         <div class="contact-grid" id="contact-grid" style="margin-top:12px"></div>
       </div>
     </div>
@@ -231,6 +243,7 @@
       <p id="join-lead">—</p>
       <p class="cta-tail" id="join-tail">—</p>
       <div class="cta-actions" id="join-actions"></div>
+      <div class="cta-contacts" id="join-contacts"></div>
       <p class="dim" style="font-size:12.6px;margin:18px 0 0" id="join-addr">—</p>
     </div>
   </section>
