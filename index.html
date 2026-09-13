@@ -26,6 +26,7 @@
       <a href="#directions" data-nav="directions">技术方向</a>
       <a href="#awards" data-nav="awards">赛事成果</a>
       <a href="#gallery" data-nav="gallery">证书墙</a>
+      <a href="#sim" data-nav="sim">调参挑战</a>
       <a href="#career" data-nav="career">考研就业</a>
       <a href="#visit" data-nav="visit">联系我们</a>
       <a href="#faq" data-nav="faq">常见问题</a>
@@ -208,6 +209,160 @@
     <p class="gallery-empty" id="gallery-empty" hidden>—</p>
   </section>
 
+  <!-- ============================== 调参挑战（小游戏） ============================== -->
+  <section class="section wrap" id="sim">
+    <div class="section-head reveal">
+      <span class="eyebrow">PARAM TUNING</span>
+      <h2 class="section-title">调参挑战：让车自己贴住赛道</h2>
+      <p class="section-sub">
+        这是我们每天真正在做的事。你调 Kp（响应力度）和 Kd（阻尼）两个旋钮，让小车跑完一整圈不掉线。
+        <strong>赛道很宽、门槛很低</strong>——没玩过也能跑完；但你要是完全不管方向盘，它一定会出局。
+        跑起来以后也可以继续拖滑杆，边跑边调。
+      </p>
+    </div>
+
+    <div class="sim-card reveal">
+      <div class="sim-stage">
+        <canvas id="sim-canvas" width="900" height="380" role="img" aria-label="调参模拟画面：小车沿赛道行驶"></canvas>
+        <p class="sim-status" id="sim-status">正在加载模拟器…</p>
+      </div>
+
+      <div class="sim-panel">
+        <div class="sim-tutorial" id="sim-tutorial" hidden>
+          <b class="sim-tut-step" id="sim-tut-step">新手教程</b>
+          <p class="sim-tut-text" id="sim-tut-text"></p>
+          <div class="sim-tut-actions">
+            <button type="button" class="btn btn-primary btn-sm" id="sim-tut-apply">按这一步设好参数</button>
+            <button type="button" class="btn btn-ghost btn-sm" id="sim-tut-next">下一步 →</button>
+            <button type="button" class="btn btn-ghost btn-sm" id="sim-tut-exit">退出教程</button>
+          </div>
+        </div>
+
+        <div class="sim-field">
+          <label class="sim-label" for="sim-kp">Kp · 响应力度 <b id="sim-kp-val">0.90</b></label>
+          <input class="sim-range" type="range" id="sim-kp" min="0" max="4" step="0.05" value="0.9">
+          <p class="sim-tip">偏差越大、打方向越多。太小＝跟不上弯，太大＝左右猛摆</p>
+        </div>
+
+        <div class="sim-field">
+          <label class="sim-label" for="sim-kd">Kd · 阻尼 <b id="sim-kd-val">0.05</b></label>
+          <input class="sim-range" type="range" id="sim-kd" min="0" max="1.5" step="0.02" value="0.05">
+          <p class="sim-tip">看偏差的「变化速度」提前刹车。太小＝过弯冲出去，太大＝反应发木</p>
+        </div>
+
+        <div class="sim-field">
+          <label class="sim-label" for="sim-speed">车速 <b id="sim-speed-val">110</b></label>
+          <input class="sim-range" type="range" id="sim-speed" min="60" max="200" step="5" value="95">
+          <p class="sim-tip">一定先调稳、再提速 —— 这是真实比赛的顺序</p>
+        </div>
+
+        <div class="sim-field">
+          <label class="sim-label" for="sim-level">赛道</label>
+          <select class="select" id="sim-level"></select>
+        </div>
+
+        <div class="sim-field" id="sim-seed-row" hidden>
+          <label class="sim-label" for="sim-seed-input">赛道编号 <b id="sim-seed-code">—</b></label>
+          <div class="sim-seed-row">
+            <input class="input" type="text" id="sim-seed-input" placeholder="如 K7Q2M" autocomplete="off" spellcheck="false">
+            <button type="button" class="btn btn-ghost btn-sm" id="sim-seed-use">用这个编号</button>
+            <button type="button" class="btn btn-ghost btn-sm" id="sim-seed-new">换一条</button>
+          </div>
+          <p class="sim-tip">同一编号 = 同一条赛道。把编号发给同学，比谁跑得快。</p>
+        </div>
+
+        <div class="sim-field">
+          <label class="sim-label">玩法</label>
+          <div class="sim-modes">
+            <button type="button" class="sim-mode active" id="sim-mode-lap">🏁 计时赛 · 比圈速</button>
+            <button type="button" class="sim-mode" id="sim-mode-score">🎯 得分赛 · 比贴线</button>
+            <select class="select sim-dur" id="sim-dur" hidden></select>
+          </div>
+          <p class="sim-tip">计时赛：跑完一圈比谁快。得分赛：跑固定时间，<b>越靠中线分越高</b>，贴到中间虚线附近还有 1.5 倍奖励。</p>
+        </div>
+
+        <div class="sim-actions">
+          <button type="button" class="btn btn-primary" id="sim-run">开始挑战</button>
+          <button type="button" class="btn btn-ghost btn-sm" id="sim-tut-btn">新手教程</button>
+          <button type="button" class="btn btn-ghost btn-sm" id="sim-random">随机参数</button>
+        </div>
+
+        <div class="sim-readouts" id="sim-read-lap">
+          <div><span>偏差</span><b id="sim-err">0.0</b></div>
+          <div><span>舵量</span><b id="sim-steer">0</b></div>
+          <div><span>用时</span><b id="sim-time">0.00 s</b></div>
+          <div><span>赛道外</span><b id="sim-offtime">0.0 / 4.0 s</b></div>
+          <div><span>本关最好</span><b id="sim-best">—</b></div>
+        </div>
+
+        <div class="sim-readouts" id="sim-read-score" hidden>
+          <div><span>得分</span><b id="sim-score">0</b></div>
+          <div><span>偏差</span><b id="sim-err-score">0.0</b></div>
+          <div><span>贴线率</span><b id="sim-coef">—</b></div>
+          <div><span>完美时长</span><b id="sim-perfect">0.0 s</b></div>
+          <div><span>剩余</span><b id="sim-left">60.0 s</b></div>
+          <div><span>最高分</span><b id="sim-best-score">—</b></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 调参讲解 -->
+    <div class="grid grid-2 reveal" style="margin-top:18px;align-items:start">
+      <div class="card">
+        <span class="eyebrow">HOW IT WORKS</span>
+        <h3 style="font-size:19px">它在算什么？</h3>
+        <p class="muted" style="font-size:13.8px;margin-bottom:12px">
+          车每时每刻都在算一件事：<strong>我现在离赛道中心偏了多少</strong>（这叫「偏差」）。
+          然后按下面这条式子决定怎么打方向：
+        </p>
+        <p class="sim-formula">舵量 = Kp × 偏差 + Kd × 偏差变化率</p>
+        <ul class="sim-notes">
+          <li><b>Kp 部分</b>：偏得越多，回得越狠 —— 让它「跟上赛道」。</li>
+          <li><b>Kd 部分</b>：看偏差是正在变大还是正在变小，提前反打 —— 相当于「提前刹车」，防止冲过头。</li>
+          <li><b>压边会掉速</b>：车偏离赛道中心越多，速度掉得越多（真车压到边线也会打滑减速）。
+            所以「贴线越紧 = 圈速越快」，调参好不好直接影响成绩，而不只是看有没有出界。</li>
+          <li>右边「偏差 / 舵量」两个数字就是它在实时算的东西，可以一边跑一边看。</li>
+          <li><b>赛道还能随机生成</b>：把「赛道」换成「🎲 随机赛道」，每条都会生成一个编号。
+            <strong>同一个编号＝同一条赛道</strong>，把编号发给同学就能比成绩；
+            生成时会自动验证难度，保证「新人能跑完、但不打方向必出局」。</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <span class="eyebrow">CHEAT SHEET</span>
+        <h3 style="font-size:19px">症状 → 怎么办（抄这张表就行）</h3>
+        <div class="table-wrap">
+          <table class="tbl">
+            <thead><tr><th>你看到的现象</th><th>原因</th><th>怎么调</th></tr></thead>
+            <tbody>
+              <tr><td>车跟不上弯，越跑越偏一边</td><td>响应太弱</td><td>Kp <b>调大</b></td></tr>
+              <tr><td>车左右来回摆、画龙</td><td>响应太猛 / 没阻尼</td><td>Kp <b>调小</b>，或 Kd <b>调大</b></td></tr>
+              <tr><td>进弯直接冲出去</td><td>只会回正、不会提前收</td><td>Kd <b>调大</b></td></tr>
+              <tr><td>过弯时反应发木、车发飘</td><td>阻尼过大，把修正也压住了</td><td>Kd <b>调小</b>，或 Kp 略调大</td></tr>
+              <tr><td>同一个弯每次跑得都不一样</td><td>参数卡在临界点</td><td>把 Kp 降一点、Kd 加一点，留余量</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="dim" style="font-size:12.6px;margin:12px 0 0">
+          <b>调参顺序</b>：① 先把 Kd 拉到 0，只调 Kp，调到「能大致跟上但有点晃」；
+          ② 再慢慢加 Kd，把晃动压平；③ 稳了以后提速，提速后回到 ① 再微调。新手教程会带你走一遍。
+        </p>
+      </div>
+    </div>
+
+    <p class="dim" style="font-size:12.6px;margin-top:14px">
+      <b>两种玩法：</b>
+      <b>🏁 计时赛</b> —— 跑完一整圈比圈速，赛道外累计超过 4 秒判罚出局，赛道外时间按 2 倍罚时。
+      <b>🎯 得分赛</b> —— 跑固定时长（30 / 60 / 90 秒）比得分：
+      每秒得分 = 100 × 贴线系数，贴线系数 = 1 − 偏差 ÷ 半宽，<b>越靠中线分越高</b>；
+      压线不得分，<b>贴到中间虚线附近（系数 ≥ 0.9）有 1.5 倍奖励</b>；时间越长分越多，所以「稳、准、久」都能拿高分。
+      两种玩法的成绩都只存在你自己的浏览器里。<br>
+      说明：这个小游戏只在按下「开始挑战」之后才开始运算，画布滚出屏幕或切到别的标签页会自动暂停，
+      对网站其它部分没有任何影响。
+    </p>
+  </section>
+
+
   <!-- ============================== 联系我们 ============================== -->
   <section class="section wrap" id="visit">
     <div class="section-head reveal">
@@ -279,5 +434,6 @@
 <script src="assets/js/config.js"></script>
 <script src="assets/js/gallery.js"></script>
 <script src="assets/js/main.js"></script>
+<script src="assets/js/sim.js"></script>
 </body>
 </html>
