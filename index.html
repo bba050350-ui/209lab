@@ -215,7 +215,7 @@
       <span class="eyebrow">PARAM TUNING</span>
       <h2 class="section-title">调参挑战：让车自己贴住赛道</h2>
       <p class="section-sub">
-        这是我们每天真正在做的事。你调 Kp（响应力度）和 Kd（阻尼）两个旋钮，让小车跑完一整圈不掉线。
+        这是我们每天真正在做的事。你调 Kp（响应力度）、Ki（消长期偏差）、Kd（阻尼）三个旋钮，让小车跑完一整圈不掉线。
         <strong>赛道很宽、门槛很低</strong>——没玩过也能跑完；但你要是完全不管方向盘，它一定会出局。
         跑起来以后也可以继续拖滑杆，边跑边调。
       </p>
@@ -225,6 +225,17 @@
       <div class="sim-stage">
         <canvas id="sim-canvas" width="900" height="380" role="img" aria-label="调参模拟画面：小车沿赛道行驶"></canvas>
         <p class="sim-status" id="sim-status">正在加载模拟器…</p>
+
+        <div class="sim-scope-wrap">
+          <canvas id="sim-scope" width="900" height="220" role="img" aria-label="实时波形图：小车此刻的偏差与舵量曲线"></canvas>
+          <p class="sim-scope-tip">
+            ↑ <b>实时波形</b>（最近 8 秒，跟着车一起动）：
+            <b class="scope-e">琥珀色＝偏差</b>（车离理想走线差多少，上下两条虚线是赛道半宽）、
+            <b class="scope-u">青色＝舵量</b>（控制器此刻给出的转向指令）。
+            看这两条线就知道参数好不好：<b>抖得飞快、上下乱跳 ＝ Kp 太大或 Kd 不够</b>；
+            <b>长时间朝同一边偏着收不回来 ＝ 需要加 Ki</b>。
+          </p>
+        </div>
       </div>
 
       <div class="sim-panel">
@@ -248,6 +259,12 @@
           <label class="sim-label" for="sim-kd">Kd · 阻尼 <b id="sim-kd-val">0.05</b></label>
           <input class="sim-range" type="range" id="sim-kd" min="0" max="1.5" step="0.02" value="0.05">
           <p class="sim-tip">看偏差的「变化速度」提前刹车。太小＝过弯冲出去，太大＝反应发木</p>
+        </div>
+
+        <div class="sim-field">
+          <label class="sim-label" for="sim-ki">Ki · 消长期偏差 <b id="sim-ki-val">0.00</b></label>
+          <input class="sim-range" type="range" id="sim-ki" min="0" max="2" step="0.01" value="0">
+          <p class="sim-tip">车本身有轻微机械跑偏，只靠 Kp 会一直歪向同一边。Ki 把「攒下来的偏差」慢慢补掉。太大＝左右来回摆</p>
         </div>
 
         <div class="sim-field">
@@ -276,9 +293,11 @@
           <div class="sim-modes">
             <button type="button" class="sim-mode active" id="sim-mode-lap">🏁 计时赛 · 比圈速</button>
             <button type="button" class="sim-mode" id="sim-mode-score">🎯 得分赛 · 比贴线</button>
+            <button type="button" class="sim-mode" id="sim-mode-loop">🔄 循环赛 · 看全貌</button>
             <select class="select sim-dur" id="sim-dur" hidden></select>
+            <select class="select sim-dur" id="sim-laps" hidden></select>
           </div>
-          <p class="sim-tip">计时赛：跑完一圈比谁快。得分赛：跑固定时间，<b>越靠中线分越高</b>，贴到中间虚线附近还有 1.5 倍奖励。</p>
+          <p class="sim-tip">计时赛：跑完一圈比谁快。得分赛：跑固定时间，<b>越靠中线分越高</b>，贴到中间虚线附近还有 1.5 倍奖励。<b>循环赛</b>：整条环形赛道全貌看得见，自己定跑 1 / 2 / 3 / 5 圈，跑完按<b>平均圈速 + 贴线率</b>给综合成绩。</p>
         </div>
 
         <div class="sim-actions">
@@ -290,6 +309,7 @@
         <div class="sim-readouts" id="sim-read-lap">
           <div><span>偏差</span><b id="sim-err">0.0</b></div>
           <div><span>舵量</span><b id="sim-steer">0</b></div>
+          <div><span>积分项</span><b id="sim-iterm">0</b></div>
           <div><span>用时</span><b id="sim-time">0.00 s</b></div>
           <div><span>赛道外</span><b id="sim-offtime">0.0 / 4.0 s</b></div>
           <div><span>本关最好</span><b id="sim-best">—</b></div>
@@ -298,10 +318,24 @@
         <div class="sim-readouts" id="sim-read-score" hidden>
           <div><span>得分</span><b id="sim-score">0</b></div>
           <div><span>偏差</span><b id="sim-err-score">0.0</b></div>
+          <div><span>积分项</span><b id="sim-iterm-score">0</b></div>
           <div><span>贴线率</span><b id="sim-coef">—</b></div>
           <div><span>完美时长</span><b id="sim-perfect">0.0 s</b></div>
           <div><span>剩余</span><b id="sim-left">60.0 s</b></div>
           <div><span>最高分</span><b id="sim-best-score">—</b></div>
+        </div>
+
+        <div class="sim-readouts" id="sim-read-loop" hidden>
+          <div><span>圈数进度</span><b id="sim-loop-laps-now">第 1 / 2 圈</b></div>
+          <div><span>本圈用时</span><b id="sim-loop-laptime">0.00 s</b></div>
+          <div><span>平均圈速</span><b id="sim-loop-avg">—</b></div>
+          <div><span>最快一圈</span><b id="sim-loop-bestlap">—</b></div>
+          <div><span>贴线率</span><b id="sim-loop-rate">—</b></div>
+          <div><span>总得分</span><b id="sim-loop-score">0</b></div>
+          <div><span>平均每圈得分</span><b id="sim-loop-scoreper">—</b></div>
+          <div><span>综合成绩</span><b id="sim-loop-final">0 分</b></div>
+          <div><span>等级</span><b id="sim-loop-grade">—</b></div>
+          <div><span>本圈数最好成绩</span><b id="sim-loop-record">—</b></div>
         </div>
       </div>
     </div>
@@ -315,13 +349,15 @@
           车每时每刻都在算一件事：<strong>我现在离赛道中心偏了多少</strong>（这叫「偏差」）。
           然后按下面这条式子决定怎么打方向：
         </p>
-        <p class="sim-formula">舵量 = Kp × 偏差 + Kd × 偏差变化率</p>
+        <p class="sim-formula">舵量 = Kp × 偏差 ＋ Ki × 偏差累积 ＋ Kd × 偏差变化率</p>
         <ul class="sim-notes">
           <li><b>Kp 部分</b>：偏得越多，回得越狠 —— 让它「跟上赛道」。</li>
+          <li><b>Ki 部分</b>：把「过去攒下来的偏差」也补进去。车有轻微机械跑偏（舵机中位不准）时，
+            光靠 Kp 会整条赛道都贴在同一边（这就是「稳态偏差」），Ki 会一点点把车拉回中线。</li>
           <li><b>Kd 部分</b>：看偏差是正在变大还是正在变小，提前反打 —— 相当于「提前刹车」，防止冲过头。</li>
           <li><b>压边会掉速</b>：车偏离赛道中心越多，速度掉得越多（真车压到边线也会打滑减速）。
             所以「贴线越紧 = 圈速越快」，调参好不好直接影响成绩，而不只是看有没有出界。</li>
-          <li>右边「偏差 / 舵量」两个数字就是它在实时算的东西，可以一边跑一边看。</li>
+          <li>右边「偏差 / 舵量 / 积分项」几个数字就是它在实时算的东西，可以一边跑一边看。</li>
           <li><b>赛道还能随机生成</b>：把「赛道」换成「🎲 随机赛道」，每条都会生成一个编号。
             <strong>同一个编号＝同一条赛道</strong>，把编号发给同学就能比成绩；
             生成时会自动验证难度，保证「新人能跑完、但不打方向必出局」。</li>
@@ -336,6 +372,8 @@
             <thead><tr><th>你看到的现象</th><th>原因</th><th>怎么调</th></tr></thead>
             <tbody>
               <tr><td>车跟不上弯，越跑越偏一边</td><td>响应太弱</td><td>Kp <b>调大</b></td></tr>
+              <tr><td>整条赛道都贴在同一边、怎么也回不到中线</td><td>机械跑偏造成的稳态偏差</td><td>Ki <b>调大</b>（从 0.1 起慢慢加）</td></tr>
+              <tr><td>加了 Ki 之后开始来回摆、越摆越大</td><td>积分攒过头了</td><td>Ki <b>调小</b>，或 Kd <b>调大</b></td>
               <tr><td>车左右来回摆、画龙</td><td>响应太猛 / 没阻尼</td><td>Kp <b>调小</b>，或 Kd <b>调大</b></td></tr>
               <tr><td>进弯直接冲出去</td><td>只会回正、不会提前收</td><td>Kd <b>调大</b></td></tr>
               <tr><td>过弯时反应发木、车发飘</td><td>阻尼过大，把修正也压住了</td><td>Kd <b>调小</b>，或 Kp 略调大</td></tr>
@@ -344,24 +382,28 @@
           </table>
         </div>
         <p class="dim" style="font-size:12.6px;margin:12px 0 0">
-          <b>调参顺序</b>：① 先把 Kd 拉到 0，只调 Kp，调到「能大致跟上但有点晃」；
-          ② 再慢慢加 Kd，把晃动压平；③ 稳了以后提速，提速后回到 ① 再微调。新手教程会带你走一遍。
+          <b>调参顺序</b>：① 先把 Kd 和 Ki 都拉到 0，只调 Kp，调到「能大致跟上但有点晃」；
+          ② 再慢慢加 Kd，把晃动压平；③ 如果车一直歪在同一边，再加一点 Ki 把长期偏差补掉；
+          ④ 稳了以后提速，提速后回到 ① 再微调。新手教程会带你走一遍这五步。
         </p>
       </div>
     </div>
 
     <p class="dim" style="font-size:12.6px;margin-top:14px">
-      <b>两种玩法：</b>
+      <b>三种玩法：</b>
       <b>🏁 计时赛</b> —— 跑完一整圈比圈速，赛道外累计超过 4 秒判罚出局，赛道外时间按 2 倍罚时。
       <b>🎯 得分赛</b> —— 跑固定时长（30 / 60 / 90 秒）比得分：
       每秒得分 = 100 × 贴线系数，贴线系数 = 1 − 偏差 ÷ 半宽，<b>越靠中线分越高</b>；
       压线不得分，<b>贴到中间虚线附近（系数 ≥ 0.9）有 1.5 倍奖励</b>；时间越长分越多，所以「稳、准、久」都能拿高分。
-      两种玩法的成绩都只存在你自己的浏览器里。<br>
+      <b>🔄 循环赛</b> —— 一条闭合的环形赛道，整条<b>全貌</b>都能看见；自己定跑 1 / 2 / 3 / 5 圈，
+      每圈单独记时间，跑完给<b>平均圈速</b>、<b>总得分（平均每圈得分）</b>和
+      <b>综合成绩 = 贴线率 × 基准圈速 ÷ 你的平均圈速 × 100</b>（S / A / B / C / D 五档）。
+      循环赛里压到赛道外不会直接出局，而是记 2 倍罚时并拉低贴线率 —— 圈数多，稳定比拼一把更值钱。<br>
+      三种玩法的成绩都只存在你自己的浏览器里。<br>
       说明：这个小游戏只在按下「开始挑战」之后才开始运算，画布滚出屏幕或切到别的标签页会自动暂停，
       对网站其它部分没有任何影响。
     </p>
   </section>
-
 
   <!-- ============================== 联系我们 ============================== -->
   <section class="section wrap" id="visit">

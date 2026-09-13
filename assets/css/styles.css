@@ -1054,6 +1054,23 @@ body.no-scroll { overflow: hidden; }
 
 .sim-dur { flex: 0 0 auto; width: auto; padding: 8px 12px; font-size: 13.4px; }
 
+/* 实时波形图（跟着小车一起动的示波器） */
+.sim-scope-wrap { margin-top: 12px; }
+
+.sim-scope-wrap canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: var(--r-md);
+  border: 1px solid var(--line);
+  background: #080f1e;
+}
+
+.sim-scope-tip { margin: 9px 0 0; font-size: 12.4px; color: var(--dim); line-height: 1.62; }
+.sim-scope-tip b { color: #cfe3ff; }
+.sim-scope-tip .scope-e { color: #ffca57; }
+.sim-scope-tip .scope-u { color: #27e0ff; }
+
 .sim-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 2px; }
 .sim-actions .btn-primary { flex: 1 1 150px; }
 
