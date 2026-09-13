@@ -42,9 +42,9 @@ window.GALLERY = {
       w: 560, h: 571
     },
     {
-      thumb: "assets/gallery/thumbs/cert-05-b655.jpg",
-      full: "assets/gallery/full/cert-05-b655.jpg",
-      title: "e4a6cbe26b2c5b251a291663a7d32e1d",
+      thumb: "assets/gallery/thumbs/cert-05-f5bf.jpg",
+      full: "assets/gallery/full/cert-05-f5bf.jpg",
+      title: "e96f429da2728f5924fc12a10298ab9f",
       meta: "",
       year: "",
       w: 560, h: 563
